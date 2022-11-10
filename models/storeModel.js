@@ -3,10 +3,10 @@ const { Schema, model } = require('mongoose');
 const tokenSchema = new Schema({
   token: String,
   createdAt: { type: Date, default: Date.now },
-  expireIn: Number,
+  expireAt: Date,
 });
 
-const availableStores = ['shopee'];
+const availableStoreTypes = process.env.STORE_TYPES.split(',');
 
 const storeSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -15,15 +15,27 @@ const storeSchema = new Schema({
     type: String,
     lowercase: true,
     required: true,
-
     enum: {
-      values: availableStores,
-      message: 'The role can only be: ' + availableStores,
+      values: availableStoreTypes,
+      message: 'The shop types can only be: ' + availableStoreTypes,
     },
   },
 
-  // Only for Shopee
+  storeName: String,
+
+  // For Shopee and Tokopedia
   shopId: Number,
+
+  // status: { type: String, enum: ['authorized', 'unauthorized'] },
+
+  active: Boolean,
+
+  // For Lazada
+  countryCode: String,
+
+  storeData: Schema.Types.Mixed,
+
+  createdAt: { type: Date, default: Date.now },
 
   accessToken: tokenSchema,
   refreshToken: tokenSchema,

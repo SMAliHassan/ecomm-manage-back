@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start-dev": "nodemon server.js",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -16,12 +17,17 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.0.1",
+    "esm": "^3.2.25",
     "express": "^4.18.1",
     "express-mongo-sanitize": "^2.2.0",
     "helmet": "^6.0.0",
     "jsonwebtoken": "^8.5.1",
     "lazada-open-platform-sdk": "^2.0.0-0",
     "mongoose": "^6.5.4",
+    "shopee-open-api": "^1.0.5",
+    "shopee-openapi-v2": "^1.0.37",
+    "tokopedia-client": "^1.0.4",
+    "tslib": "^2.4.0",
     "xss-clean": "^0.1.1"
   }
 }

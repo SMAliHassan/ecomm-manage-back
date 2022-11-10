@@ -1,128 +1,152 @@
-const axios = require('axios');
+const { default: ShopeeOpenAPI } = require('shopee-open-api');
+const { default: shopeeApiV2 } = require('shopee-openapi-v2'); // For auth only
 
-const Store = require('../models/storeModel');
+const Store = require('../models/storeModel.js');
 
-const host =
-  process.env.NODE_ENV === 'production' ? process.env.SHOPEE_URL : process.env.SHOPEE_TEST_URL;
+const partner_id = +process.env.SHOPEE_PARTNER_ID;
+const partner_key = process.env.SHOPEE_PARTNER_KEY;
+const redirect = process.env.AUTH_REDIRECT_URL_BASE + '/shopee';
 
-const createSign = (partnerId, path, timest) => {
-  const signString = partnerId + path + timest;
+shopeeApiV2.setAppConfig({
+  partner_id,
+  partner_key,
+  is_dev: process.env.NODE_ENV === 'production' ? false : true,
+  redirect,
+});
 
-  const sign = crypto
-    .createHmac('sha256', process.env.SHOPEE_PARTNER_KEY)
-    .update(signString)
-    .digest('hex');
+const shopeeApi = ShopeeOpenAPI({
+  host: 'https://partner.test-stable.shopeemobile.com', //change this to production url
+  partner_id,
+  partner_key,
+  redirect,
+});
 
-  return sign;
-};
-exports.createSign = createSign;
+// Generate Auth link
+exports.buildAuth = () => shopeeApi.getAuthLink();
 
-exports.createAuth = () => {
-  const host =
-    process.env.NODE_ENV === 'production' ? process.env.SHOPEE_URL : process.env.SHOPEE_TEST_URL;
-
-  const path = '/api/v2/store/auth_partner';
-  const timest = new Date().getTime();
-
-  const redirectUrl =
-    process.env.NODE_ENV === 'production'
-      ? 'https://www.domainname.com/auth/shopee'
-      : 'http://127.0.0.1:3000/auth/shopee';
-
-  const partnerId = process.env.SHOPEE_PARTNER_ID;
-
-  const sign = createSign(partnerId, path, timest);
-
-  return `${
-    host + path
-  }?partner_id=${partnerId}&timestamp=${timest}&sign=${sign}&redirect=${redirectUrl}`;
+const getShopData = async (shopId, accessToken) => {
+  return await shopeeApi
+    .createShop({
+      shop_id: shopId,
+      onGetAccessToken: async () => accessToken,
+    })
+    .getShopInfo();
 };
 
-const refreshAccessToken = async (refreshToken, shopId) => {
-  const path = '/api/v2/auth/access_token/get';
-  const partnerId = process.env.SHOPEE_PARTNER_ID;
-  const timest = new Date().getTime();
-  const sign = createSign(partnerId, path, timest);
+exports.authorize = async user => {
+  const { code, shop_id, main_account_id } = req.body;
 
-  const url = `${host + path}?partner_id=${partnerId}&timestamp=${timest}&sign=${sign}`;
-  const body = {
-    refresh_token: refreshToken,
-    partner_id: partnerId,
-    shop_id: shopId,
-  };
+  if (!shop_id && !main_account_id)
+    return next(new AppError(400, 'No shop_id or main_account_id provided!'));
 
-  const { data } = axios.post(url, body, {
-    'Content-Type': 'application/json',
+  const { access_token, refresh_token, expire_in, shop_id_list, merchant_id_list } =
+    await shopeeApiV2.getAccesstoken({
+      code,
+      shop_id,
+      main_account_id,
+      partner_id,
+    });
+
+  if (shop_id_list?.length) {
+    const storePromiseArr = shop_id_list.map(async id => {
+      const shopData = await getShopData(id, access_token);
+
+      await Store.create({
+        storeType: 'shopee',
+        user,
+        shopData,
+        shopId: id,
+        accessToken: { token: access_token, expireAt: new Date(expire_in * 1000 + Date.now()) },
+        refreshToken: {
+          token: refresh_token,
+          expireAt: new Date(process.env.SHOPEE_REFRESH_EXPIRE * 24 * 60 * 60 * 1000),
+        },
+      });
+    });
+
+    await Promise.all(storePromiseArr);
+  } else {
+    const shopData = await getShopData(shop_id, access_token);
+
+    await Store.create({
+      storeType: 'shopee',
+      user,
+      shopData,
+      shopId: shop_id,
+      accessToken: { token: access_token, expireAt: new Date(expire_in * 1000 + Date.now()) },
+      refreshToken: {
+        token: refresh_token,
+        expireAt: new Date(process.env.SHOPEE_REFRESH_EXPIRE * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
+
+  return res.status(201).json({ status: 'success' });
+};
+
+const pullData = async storeId => {
+  const store = await Store.findById(storeId);
+
+  const shop = shopeeApi.createShop({
+    shop_id: store.shopId,
+    onGetAccessToken: async () => store.accessToken.token,
+    onRefreshAccessToken: async () => {
+      //OPTIONAL
+      //you might want to have some logic here to prevent multiple calls to refresh access token
+      const { access_token, refresh_token, expire_in } = await shopeeApi.refreshAccessToken({
+        refresh_token: store.refreshToken.token,
+        shop_id: store.shopId,
+      });
+
+      store.refreshToken = {
+        token: refresh_token,
+        expireAt: new Date(process.env.SHOPEE_REFRESH_EXPIRE * 24 * 60 * 60 * 1000),
+      };
+      store.accessToken = {
+        token: access_token,
+        expireAt: new Date(expire_in * 1000 + Date.now()),
+      };
+      await store.save();
+
+      return access_token;
+    },
   });
-  return data;
-};
-exports.refreshAccessToken = refreshAccessToken;
-
-// const verifyRefreshAccess = async store => {
-//   const accessTokenExpire =
-//     new Date(store.accessToken.createdAt).getTime() + store.accessToken.expireIn;
-
-//   const now = new Date().getTime();
-
-//   if (now > accessTokenExpire) {
-//     const { refresh_token, access_token, expire_in } = await refreshAccessToken();
-//   }
-// };
-
-exports.authorize = async ({ code, shop_id, main_account_id }) => {
-  const host =
-    process.env.NODE_ENV === 'production' ? process.env.SHOPEE_URL : process.env.SHOPEE_TEST_URL;
-
-  const path = '/api/v2/auth/token/get';
-  const timest = new Date().getTime();
-  const partnerId = process.env.SHOPEE_PARTNER_ID;
-  const sign = createSign(partnerId, path, timest);
-
-  const body = {
-    partner_id: partnerId,
-    code,
-  };
-  if (shop_id) body.shop_id = shop_id;
-  else body.main_account_id = main_account_id;
-
-  const url = `${host + path}?partner_id=${partnerId}&timestamp=${timest}&sign=${sign}`;
-
-  const { data } = await axios.post(url, body, {
-    'Content-Type': 'application/json',
-  });
-  return data;
-};
-
-const pullAllProducts = async shopId => {
-  const path = '/v2/product/get_item_list';
-  const partnerId = process.env.SHOPEE_PARTNER_ID;
-  const timest = new Date().getTime();
-  const sign = createSign(partnerId, path, timest);
-  const store = await Store.findOne({ shopId, storeType: 'shopee' });
-
-  let productList = [];
-  const pageSize = 100; // Max is 100
-  const statuses = ['NORMAL', 'BANNED', 'DELETED', 'UNLIST'];
 
   let offset = 0;
   let more = true;
-
+  const productsArr = [];
   while (more) {
-    const url = `${
-      host + path
-    }?partner_id=${partnerId}&timestamp=${timest}&sign=${sign}&offset=${offset}&page_size=${pageSize}&item_status=${statuses.join(
-      '&item_status='
-    )}`;
+    const { response } = await shop.Product.getItemList({ offset, page_size: 100 });
 
-    const { data } = await axios.get(url);
-
-    productList = [...productList, ...data.response.item];
-
-    offset = data.response.next_offset;
-    more = data.response.has_next_page;
+    productsArr.push(...response.item);
+    more = newProdArr?.length;
+    offset += 100;
   }
+
+  const productsIdList = productsArr.map(prod => prod.item_id);
+
+  const productsInfoArr = await getProductBaseInfo(productsIdList, shop);
+  const productsModeledArr = productsInfoArr.map(prod => {
+    return { productData: prod, store: store.storeId };
+  });
+
+  await Store.create(productsModeledArr);
 };
 
-exports.pullData = async shopId => {
-  await pullAllProducts();
+const getProductBaseInfo = async (idList, shop) => {
+  const remainingIds = [...idList];
+
+  let offset = 0;
+  const limit = 50;
+  const productsArr = [];
+
+  while (remainingIds.length) {
+    const item_id_list = remainingIds.splice(offset, limit);
+    const { response } = await shop.Product.getItemBaseInfo({ item_id_list });
+
+    productsArr.push(...response.item);
+    offset += limit;
+  }
+
+  return productsArr;
 };

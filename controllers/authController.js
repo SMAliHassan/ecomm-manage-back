@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const User = require('../models/userModel');
+const { randomInt } = require('crypto');
 
 const signToken = id =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
@@ -17,7 +18,7 @@ const createSendToken = (user, statusCode, res) => {
     expire: Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,
   };
   if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
-  res.cookie('belinasiToken', token, cookieOptions);
+  res.cookie('authToken', token, cookieOptions);
 
   user.password = undefined;
 
@@ -25,7 +26,7 @@ const createSendToken = (user, statusCode, res) => {
 };
 
 exports.protect = catchAsync(async (req, res, next) => {
-  const token = req.cookies.belinasiToken;
+  const token = req.cookies.authToken;
 
   if (!token) return next(new AppError(401, 'You are not logged in! Please log in to get access.'));
 
@@ -79,7 +80,7 @@ exports.signup = catchAsync(async (req, res, next) => {
 });
 
 exports.logout = catchAsync(async (req, res, next) => {
-  res.status(204).clearCookie('belinasiToken').json({ status: 'success', data: null });
+  res.status(204).clearCookie('authToken').json({ status: 'success', data: null });
 });
 
 exports.restrictTo = (...roles) => {
@@ -105,4 +106,42 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   await user.save();
 
   createSendToken(user, 200, res);
+});
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user)
+    return next(new AppError(404, 'No user found with with this email! Try singing up instead.'));
+
+  const passwordResetToken = user.createPasswordResetToken();
+  await user.save();
+
+  // Send email with the token
+  // email(token)
+  // Send email with the token
+
+  res.status(200).json({
+    message: `Your password reset token has been sent to your email.`,
+    status: 'success',
+  });
+});
+
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gte: Date.now() },
+  }).select('+password');
+
+  if (!user) return next(new AppError(400, 'Invalid password reset token!'));
+
+  user.password = req.body.newPassword;
+  user.passwordConfirm = req.body.passwordConfirm;
+  await user.save();
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Password updated successfully. You can now log in with the new password.',
+  });
 });

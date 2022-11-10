@@ -1,4 +1,5 @@
 const { Schema, model } = require('mongoose');
+const { promisify } = require('util');
 const bcrypt = require('bcrypt');
 
 const availableRoles = ['user'];
@@ -34,6 +35,10 @@ const userSchema = new Schema(
     createdAt: { type: Date, default: Date.now },
 
     passwordChangedAt: Date,
+
+    passwordResetToken: Number,
+
+    passwordResetExpires: Date,
 
     role: {
       type: String,
@@ -97,6 +102,17 @@ userSchema.methods.passwordChangedAfter = function (jwtDate) {
   const passwordChangeTime = this.passwordChangedAt / 1000;
 
   return passwordChangeTime > jwtDate;
+};
+
+userSchema.method.createPasswordResetToken = function () {
+  const resetToken = promisify(crypto.randomInt)(1000000, 9999999) + '';
+
+  const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+  this.passwordResetToken = hashedToken;
+  this.passwordResetExpires = Date.now() + 10 * 60 * 60;
+
+  return resetToken;
 };
 
 const User = model('User', userSchema);

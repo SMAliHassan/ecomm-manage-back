@@ -21,8 +21,7 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
 });
 
 exports.getUser = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.params.id).populate('orders');
-  // const user = await User.findById(req.params.id);
+  const user = await User.findById(req.params.id);
 
   if (!user) {
     return next(new AppError(404, 'User not found!'));
@@ -32,7 +31,7 @@ exports.getUser = catchAsync(async (req, res, next) => {
 });
 
 exports.getMe = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.user.id).populate('orders');
+  const user = await User.findById(req.user);
 
   if (!user) {
     return next(new AppError(404, 'User not found!'));

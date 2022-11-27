@@ -48,7 +48,7 @@ exports.authorizeStore = catchAsync(async (req, res, next) => {
 
   switch (type) {
     case 'shopee':
-      await shopeeController.authorize();
+      await shopeeController.authorize(req);
     case 'lazada':
       await lazadaController.authorize();
   }
@@ -62,7 +62,7 @@ exports.pullData = catchAsync(async (req, res, next) => {
 
   switch (store.storeType) {
     case 'shopee':
-      await shopeeController.pullData();
+      await shopeeController.pullData(store.id);
     case 'lazada':
       await lazadaController.pullData();
     case 'tokopedia':

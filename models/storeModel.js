@@ -8,37 +8,83 @@ const tokenSchema = new Schema({
 
 const availableStoreTypes = process.env.STORE_TYPES.split(',');
 
-const storeSchema = new Schema({
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+const storeSchema = new Schema(
+  {
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 
-  storeType: {
-    type: String,
-    lowercase: true,
-    required: true,
-    enum: {
-      values: availableStoreTypes,
-      message: 'The shop types can only be: ' + availableStoreTypes,
+    storeType: {
+      type: String,
+      lowercase: true,
+      required: true,
+      enum: {
+        values: availableStoreTypes,
+        message: 'The shop types can only be: ' + availableStoreTypes,
+      },
     },
+
+    storeName: String,
+
+    // For Shopee and Tokopedia
+    shopId: Number,
+
+    // status: { type: String, enum: ['authorized', 'unauthorized'] },
+
+    active: Boolean,
+
+    countryRegion: String,
+
+    storeData: Schema.Types.Mixed,
+
+    authorizedAt: { type: Date, default: Date.now },
+    createdAt: { type: Date, default: Date.now },
+
+    accessToken: tokenSchema,
+    refreshToken: tokenSchema,
   },
+  {
+    toJSON: {
+      virtuals: true,
+    },
+    toObject: {
+      virtuals: true,
+    },
+  }
+);
 
-  storeName: String,
+storeSchema.virtual('authValidFor').get(function () {
+  let val;
 
-  // For Shopee and Tokopedia
-  shopId: Number,
+  switch (this.storeType) {
+    case 'shopee': {
+      const daysSinceAuth = +(
+        (Date.now() - new Date(this.authorizedAt).getTime()) /
+        (24 * 60 * 60 * 1000)
+      ).toFixed();
 
-  // status: { type: String, enum: ['authorized', 'unauthorized'] },
+      val = `${+process.env.AUTH_VALIDITY_PERIOD - daysSinceAuth} days`;
+    }
 
-  active: Boolean,
+    case 'lazada': {
+      val = (
+        (new Date(this.refreshToken.expireAt).getTime() - Date.now()) /
+        (24 * 60 * 60 * 1000)
+      ).toFixed();
 
-  // For Lazada
-  countryCode: String,
+      val += ' days';
+    }
 
-  storeData: Schema.Types.Mixed,
+    case 'tokopedia': {
+      val = 'Forever';
+    }
+  }
 
-  createdAt: { type: Date, default: Date.now },
+  return val;
+});
 
-  accessToken: tokenSchema,
-  refreshToken: tokenSchema,
+storeSchema.virtual('authorized').get(function () {
+  if (this.storeType === 'tokopedia') return true;
+
+  // return newDate(this.authorizedAt).getTime()
 });
 
 const Store = model('Store', storeSchema);

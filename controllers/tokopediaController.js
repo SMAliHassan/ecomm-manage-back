@@ -45,6 +45,7 @@ exports.createStore = async (shopId, userId) => {
     user: userId,
     storeName: shop.shop_name,
     shopId,
+    countryRegion: shop.province_name,
     storeType: 'tokopedia',
     storeData: shop,
   });
@@ -110,5 +111,6 @@ const pullOrders = async store => {
 exports.pullData = async storeId => {
   const store = await Store.findById(storeId);
 
-  await Promise.all([pullProducts(store), pullOrders(store)]);
+  // await Promise.all([pullProducts(store), pullOrders(store)]);
+  await pullProducts(store);
 };

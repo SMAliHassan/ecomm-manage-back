@@ -17,10 +17,10 @@ exports.buildAuth = () => {
   return `https://auth.lazada.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&force_auth=true&response_type=code`;
 };
 
-const createLazadaClient = (accessToken, countryCode = 'id') => {
+const createLazadaClient = (accessToken, countryRegion = 'id') => {
   let country;
 
-  switch (countryCode.toLowerCase()) {
+  switch (countryRegion.toLowerCase()) {
     case 'sg':
       country = 'SINGAPORE';
       break;
@@ -62,7 +62,7 @@ const _checkGenerateAccessToken = async storeId => {
   if (new Date(store.accessToken.expireAt) <= new Date()) {
     // Refresh Token
 
-    const lazadaClient = createLazadaClient(undefined, store.countryCode);
+    const lazadaClient = createLazadaClient(undefined, store.countryRegion);
     const { access_token, expires_in, refresh_token, refresh_expires_in } =
       await lazadaClient.refreshAccessToken();
 
@@ -107,7 +107,7 @@ exports.authorize = async () => {
     refresh_token,
     expires_in,
     refresh_expires_in,
-    country: countryCode,
+    country: countryRegion,
   } = await lazadaClient.generateAccessToken({
     code,
   });
@@ -116,7 +116,7 @@ exports.authorize = async () => {
 
   const store = await Store.create({
     shopType: 'lazada',
-    countryCode,
+    countryRegion,
     shopData: data,
     storeName: seller.name,
 
@@ -155,7 +155,7 @@ exports.pullData = async storeId => {
   const store = await Store.findById(storeId);
   if (!store) throw new AppError(400, 'No store found with this ID.');
 
-  const aLazadaClient = createLazadaClient(store.accessToken.token, store.countryCode);
+  const aLazadaClient = createLazadaClient(store.accessToken.token, store.countryRegion);
 
   let offset = 0;
   const limit = 50;

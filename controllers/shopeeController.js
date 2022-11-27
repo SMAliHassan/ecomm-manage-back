@@ -2,21 +2,24 @@ const { default: ShopeeOpenAPI } = require('shopee-open-api');
 const { default: shopeeApiV2 } = require('shopee-openapi-v2'); // For auth only
 
 const Store = require('../models/storeModel.js');
+const Product = require('../models/productModel.js');
 const AppError = require('../utils/appError');
 
 const partner_id = +process.env.SHOPEE_PARTNER_ID;
 const partner_key = process.env.SHOPEE_PARTNER_KEY;
 const redirect = process.env.AUTH_REDIRECT_URL_BASE + '/shopee';
 
+// For auth only
 shopeeApiV2.setAppConfig({
   partner_id,
   partner_key,
   is_dev: process.env.NODE_ENV === 'production' ? false : true,
   redirect,
 });
+// For auth only
 
 const shopeeApi = ShopeeOpenAPI({
-  host: 'https://partner.test-stable.shopeemobile.com', //change this to production url
+  host: process.NODE_ENV === 'production' ? process.env.SHOPEE_URL : process.env.SHOPEE_TEST_URL,
   partner_id,
   partner_key,
   redirect,
@@ -34,7 +37,7 @@ const getShopData = async (shopId, accessToken) => {
     .getShopInfo();
 };
 
-exports.authorize = async user => {
+exports.authorize = async req => {
   const { code, shop_id, main_account_id } = req.body;
 
   if (!shop_id && !main_account_id)
@@ -54,9 +57,10 @@ exports.authorize = async user => {
 
       await Store.create({
         storeType: 'shopee',
-        user,
+        user: req.user.id,
         shopData,
         shopId: id,
+        countryCode: shopData.region,
         accessToken: { token: access_token, expireAt: new Date(expire_in * 1000 + Date.now()) },
         refreshToken: {
           token: refresh_token,
@@ -71,9 +75,10 @@ exports.authorize = async user => {
 
     await Store.create({
       storeType: 'shopee',
-      user,
+      user: req.user.id,
       shopData,
       shopId: shop_id,
+      countryCode: shopData.region,
       accessToken: { token: access_token, expireAt: new Date(expire_in * 1000 + Date.now()) },
       refreshToken: {
         token: refresh_token,
@@ -85,7 +90,7 @@ exports.authorize = async user => {
   return res.status(201).json({ status: 'success' });
 };
 
-const pullData = async storeId => {
+exports.pullData = async storeId => {
   const store = await Store.findById(storeId);
   if (!store) throw new AppError(400, 'No store found with this ID.');
 
@@ -132,7 +137,7 @@ const pullData = async storeId => {
     return { productData: prod, store: store.storeId };
   });
 
-  await Store.create(productsModeledArr);
+  await Product.create(productsModeledArr);
 };
 
 const getProductBaseInfo = async (idList, shop) => {

@@ -6,6 +6,8 @@ const productSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
 
+  masterProduct: { type: Schema.Types.ObjectId, ref: 'MasterProduct' },
+
   storeType: {
     type: String,
     lowercase: true,
@@ -25,9 +27,13 @@ const productSchema = new Schema({
 
   productData: Schema.Types.Mixed,
 
-  createdAt: Date,
+  createdAt: { type: Date, default: Date.now },
   updatedAt: Date,
 });
+
+// productSchema.pre(/^find/, function () {
+//   this.populate({ path: 'store', select: 'storeName storeType' });
+// });
 
 const Product = model('Product', productSchema);
 

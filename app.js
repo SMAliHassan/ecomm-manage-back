@@ -9,6 +9,7 @@ const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 const orderRoutes = require('./routes/orderRoutes');
 const productRoutes = require('./routes/productRoutes');
+const masterProductRoutes = require('./routes/masterProductRoutes');
 const userRoutes = require('./routes/userRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 
@@ -17,6 +18,18 @@ const app = express();
 app.use(express.json());
 
 app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'img-src': ["'self'", '*', 'data:'],
+        // 'script-src': ["'self'", '*'],
+      },
+    },
+  })
+);
+
 app.use(mongoSanitize());
 
 app.use(xss());
@@ -34,6 +47,7 @@ app.options('*', cors());
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/products', productRoutes);
+app.use('/api/v1/masterProducts', masterProductRoutes);
 app.use('/api/v1/stores', storeRoutes);
 
 app.use('/', express.static('build'));

@@ -42,18 +42,22 @@ module.exports = (err, req, res, next) => {
   err.status = err.status || 'error';
   err.statusCode = err.statusCode || 500;
 
-  if (process.env.NODE_ENV === 'development') sendErrorDev(err, res);
+  if (process.env.NODE_ENV === 'development') return sendErrorDev(err, res);
 
-  // Cast to ObjectID Error
-  if (err.name === 'CastError') error = handleCastErrorDB(err);
-  // Duplicate fields Error
-  if (err.code === 11000) error = handleDuplicateFieldDB(err);
-  // Validation Error
-  if (err.name === 'ValidationError') error = handleValidationErrorDB(err);
-  // JasonWebToken Error
-  if (err.name === 'JsonWebTokenError') error = handleJWTError(err);
-  // JWT Expired Error
-  if (err.name === 'TokenExpiredError') error = handleJWTExpiredError(err);
+  if (process.env.NODE_ENV === 'production') {
+    let error;
 
-  if (process.env.NODE_ENV === 'production') sendErrorProd(err, res);
+    // Cast to ObjectID Error
+    if (err.name === 'CastError') error = handleCastErrorDB(err);
+    // Duplicate fields Error
+    if (err.code === 11000) error = handleDuplicateFieldDB(err);
+    // Validation Error
+    if (err.name === 'ValidationError') error = handleValidationErrorDB(err);
+    // JasonWebToken Error
+    if (err.name === 'JsonWebTokenError') error = handleJWTError(err);
+    // JWT Expired Error
+    if (err.name === 'TokenExpiredError') error = handleJWTExpiredError(err);
+
+    return sendErrorProd(error, res);
+  }
 };

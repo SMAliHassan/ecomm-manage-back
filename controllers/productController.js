@@ -1,10 +1,14 @@
 const Product = require('../models/productModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const tokopediaController = require('./tokopediaController');
 const masterProductController = require('./masterProductController');
 
 exports.getAllProducts = catchAsync(async (req, res, next) => {
-  const products = await Product.find({ user: req.user.id }).populate({ path: 'store' });
+  const products = await Product.find({ user: req.user.id }).populate({
+    path: 'store',
+    select: 'storeName storeType',
+  });
   //.populate({ path: 'store', select: 'storeName' });
 
   res.status(200).json({ status: 'success', data: { products } });
@@ -14,8 +18,9 @@ exports.getProductsByChannel = catchAsync(async (req, res, next) => {
   const products = await Product.find({
     user: req.user.id,
     storeType: req.params.channel,
-  }).populate({ path: 'store' });
-  // }).populate({ path: 'store', select: 'storeName' });
+  })
+    .populate({ path: 'store', select: 'storeName storeType' })
+    .populate({ path: 'masterProduct', select: 'bindedProduct name' });
 
   res.status(200).json({ status: 'success', data: { products } });
 });
@@ -34,7 +39,7 @@ exports.syncProduct = catchAsync(async (req, res, next) => {
 
   if (!product) return next(new AppError(400, 'No product found with this id.'));
 
-   await masterProductController.createProduct(product);
+  await masterProductController.createProduct(product);
 
-  res.status(201).json({ status: 'success',  });
+  res.status(201).json({ status: 'success' });
 });

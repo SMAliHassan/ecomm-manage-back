@@ -33,13 +33,20 @@ const generateAccessToken = async () => {
 // Initialize access_token
 
 exports.createStore = async (shopId, userId) => {
-  if (!shopId) throw new AppError(404, 'Please provide a shopId!');
+  if (!Number.isInteger(+shopId)) throw new AppError(400, 'The shopId should be a number!');
 
   const shopCheck = await Store.findOne({ shopId, storeType: 'tokopedia' });
   if (shopCheck) throw new AppError(400, 'Such a store already exists!');
 
-  const [shop] = await client.shop.getShopInfo(shopId);
-  if (!shop) throw new AppError(400, 'No Tokopedia shop found with this shopId!');
+  let shop;
+  try {
+    [shop] = await client.shop.getShopInfo(shopId);
+  } catch (err) {
+    throw new AppError(
+      400,
+      'No Tokopedia shop found with this shopId that is associated with our Tokopedia App!'
+    );
+  }
 
   const store = await Store.create({
     user: userId,
@@ -74,19 +81,45 @@ const loopRequest = async (module, func, baseOptions, initialPage = 0) => {
 const pullProducts = async store => {
   const productsArr = await loopRequest('product', 'getProductByShop', { shop_id: store.shopId });
 
+  // const popo = await client.product.getProductById(productsArr[0].variant.childrenID[0]);
+  // const popo = await client.product.getProductInfo([3062014918]);
+  // console.log(popo[0].variant);
+
   const productsModeled = productsArr.map(prod => {
+    const images = prod.pictures.map(pic => pic.OriginalURL);
+
+    const price = prod.price.idr ? prod.price.idr : prod.price.value;
+
+    const weight = prod.weight.unit === 1 ? prod.weight.value : prod.weight.value * 1000;
+
     return {
       user: store.user,
       store: store.id,
       storeType: 'tokopedia',
       productData: prod,
       name: prod.basic.name,
+      images,
+      price,
+      url: prod.other.url,
       productId: prod.basic.productID,
+      condition: prod.basic.condition,
+      description: prod.basic.shortDesc,
+      volume: prod.volume,
+      weight,
     };
   });
 
-  await Product.deleteMany();
-  await Product.create(productsModeled);
+  await Promise.all(
+    productsModeled.map(async prod => {
+      const prodOld = await Product.findOne({ productId: prod.productId, store: prod.store });
+
+      if (prodOld) {
+        await Product.findOneAndUpdate({ productId: prod.productId, store: prod.store }, prod);
+      } else {
+        await Product.create(prod);
+      }
+    })
+  );
 };
 
 const pullOrders = async store => {
@@ -113,4 +146,24 @@ exports.pullData = async storeId => {
 
   // await Promise.all([pullProducts(store), pullOrders(store)]);
   await pullProducts(store);
+};
+
+exports.updatePrice = async ({ productId, price }) => {
+  const product = await Product.findById(productId).populate({ path: 'store', select: 'shopId' });
+
+  try {
+    await client.product.updateProductPrice({
+      shop_id: product.store.shopId,
+      update_details: [{ product_id: product.productId, new_price: price }],
+    });
+  } catch (err) {
+    if (err.message.trim().startsWith('RBAC_MDLW_002')) {
+      throw new AppError(
+        400,
+        "You do not have the required privilege to perform this action on this shop's items."
+      );
+    }
+
+    throw err;
+  }
 };

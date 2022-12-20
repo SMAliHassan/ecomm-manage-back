@@ -5,11 +5,14 @@ const storeController = require('../controllers/storeController');
 
 const router = express.Router();
 
-router.route('/').get(authController.protect, storeController.getAllUserStores);
+// All routes under this are protected.
+router.use(authController.protect);
+
+router.route('/').get(storeController.getAllUserStores);
 
 router.get(
   '/all',
-  authController.protect,
+
   authController.restrictTo('admin'),
   storeController.getAllStores
 );
@@ -19,16 +22,15 @@ router.get(
 
 router.post(
   '/:type',
-  authController.protect,
+
   authController.restrictTo('admin'),
   storeController.createStore
 );
 
-router
-  .route('/auth/:type')
-  .get(authController.protect, storeController.getAuthUrl)
-  .post(authController.protect, storeController.authorizeStore);
+router.patch('/:id', storeController.updateStore);
 
-router.route('/:id/pull-data').post(authController.protect, storeController.pullData);
+router.route('/auth/:type').get(storeController.getAuthUrl).post(storeController.authorizeStore);
+
+router.route('/:id/pull-data').post(storeController.pullData);
 
 module.exports = router;

@@ -22,6 +22,7 @@ const storeSchema = new Schema(
       },
     },
 
+    storeNameNew: String,
     storeName: String,
 
     // For Shopee and Tokopedia

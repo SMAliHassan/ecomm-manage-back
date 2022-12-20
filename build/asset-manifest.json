@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/static/css/main.791209cf.css",
-    "main.js": "/static/js/main.66bb6a90.js",
+    "main.css": "/static/css/main.c3c4fad3.css",
+    "main.js": "/static/js/main.3d948d49.js",
     "static/js/787.49645dbf.chunk.js": "/static/js/787.49645dbf.chunk.js",
     "static/media/la-brands-400.svg": "/static/media/la-brands-400.331115337bc9be66667a.svg",
     "static/media/la-solid-900.svg": "/static/media/la-solid-900.0f874d69730f8631d632.svg",
@@ -44,12 +44,13 @@
     "static/media/shopee.svg": "/static/media/shopee.ecce6b7a4bd75741bedb92fdb67fbdc6.svg",
     "static/media/tokopedia.svg": "/static/media/tokopedia.49916798dab92b4f05fac3fefca4637a.svg",
     "index.html": "/index.html",
-    "main.791209cf.css.map": "/static/css/main.791209cf.css.map",
-    "main.66bb6a90.js.map": "/static/js/main.66bb6a90.js.map",
+    "static/media/interconnect.svg": "/static/media/interconnect.a066e4c5e445bbaa0580ceb02d7ce3a2.svg",
+    "main.c3c4fad3.css.map": "/static/css/main.c3c4fad3.css.map",
+    "main.3d948d49.js.map": "/static/js/main.3d948d49.js.map",
     "787.49645dbf.chunk.js.map": "/static/js/787.49645dbf.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.791209cf.css",
-    "static/js/main.66bb6a90.js"
+    "static/css/main.c3c4fad3.css",
+    "static/js/main.3d948d49.js"
   ]
 }

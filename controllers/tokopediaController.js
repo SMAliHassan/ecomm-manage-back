@@ -171,6 +171,10 @@ exports.updatePrice = async ({ productId, price }) => {
       update_details: [{ product_id: product.productId, new_price: price }],
     });
   } catch (err) {
+    console.log(err.message.trim().startsWith('RBAC_MDLW_002'));
+
+    console.log(err);
+
     if (err.message.trim().startsWith('RBAC_MDLW_002')) {
       throw new AppError(
         400,

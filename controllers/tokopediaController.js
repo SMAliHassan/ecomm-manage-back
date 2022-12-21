@@ -180,8 +180,8 @@ exports.updatePrice = async ({ productId, price }) => {
         400,
         "You do not have the required privilege to perform this action on this shop's items."
       );
+    } else {
+      throw err;
     }
-
-    throw err;
   }
 };

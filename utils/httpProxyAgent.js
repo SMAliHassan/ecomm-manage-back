@@ -1,6 +1,6 @@
-const { HttpProxyAgent } = require('hpagent');
+const { HttpProxyAgent, HttpsProxyAgent } = require('hpagent');
 
-const httpAgent = new HttpProxyAgent({
+exports.httpAgent = new HttpProxyAgent({
   keepAlive: true,
   keepAliveMsecs: 1000,
   maxSockets: 256,
@@ -8,4 +8,10 @@ const httpAgent = new HttpProxyAgent({
   proxy: process.env.QUOTAGUARDSTATIC_URL,
 });
 
-module.exports = httpAgent;
+exports.httpsAgent = new HttpsProxyAgent({
+  keepAlive: true,
+  keepAliveMsecs: 1000,
+  maxSockets: 256,
+  maxFreeSockets: 256,
+  proxy: process.env.QUOTAGUARDSTATIC_URL,
+});

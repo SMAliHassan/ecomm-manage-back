@@ -1,7 +1,7 @@
 const { default: TokopediaClient } = require('tokopedia-client');
 const axios = require('axios');
 
-const httpAgent = require('../utils/httpProxyAgent');
+const { httpAgent, httpsAgent } = require('../utils/httpProxyAgent');
 const Store = require('../models/storeModel');
 const Product = require('../models/productModel');
 const Order = require('../models/orderModel');
@@ -20,6 +20,7 @@ client.client = axios.create({
       : 'https://fs.tokopedia.net',
   timeout: 5000,
   httpAgent: httpAgent,
+  httpsAgent: httpsAgent,
 });
 
 const generateAccessToken = async () => {

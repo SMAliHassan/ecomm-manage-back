@@ -1,5 +1,7 @@
 const { default: TokopediaClient } = require('tokopedia-client');
+const axios = require('axios');
 
+const httpAgent = require('../utils/httpProxyAgent');
 const Store = require('../models/storeModel');
 const Product = require('../models/productModel');
 const Order = require('../models/orderModel');
@@ -9,6 +11,15 @@ const client = new TokopediaClient({
   fs_id: process.env.TOKOPEDIA_APP_ID,
   client_id: process.env.TOKOPEDIA_CLIENT_ID,
   client_secret: process.env.TOKOPEDIA_CLIENT_SECRET,
+});
+
+client.client = axios.create({
+  baseURL:
+    process.env.NODE_ENV === 'development'
+      ? 'https://fs-staging.tokopedia.com'
+      : 'https://fs.tokopedia.net',
+  timeout: 5000,
+  httpAgent: httpAgent,
 });
 
 const generateAccessToken = async () => {
@@ -27,6 +38,8 @@ const generateAccessToken = async () => {
     console.log('\nCould not authenticate Tokopedia client!\n', err.message);
   }
 };
+
+// console.log(client.client);
 
 // Initialize access_token
 (async () => await generateAccessToken())();

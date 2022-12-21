@@ -45,19 +45,19 @@ module.exports = (err, req, res, next) => {
   if (process.env.NODE_ENV === 'development') return sendErrorDev(err, res);
 
   if (process.env.NODE_ENV === 'production') {
-    let error;
+    // let error
 
     // Cast to ObjectID Error
-    if (err.name === 'CastError') error = handleCastErrorDB(err);
+    if (err.name === 'CastError') err = handleCastErrorDB(err);
     // Duplicate fields Error
-    if (err.code === 11000) error = handleDuplicateFieldDB(err);
+    if (err.code === 11000) err = handleDuplicateFieldDB(err);
     // Validation Error
-    if (err.name === 'ValidationError') error = handleValidationErrorDB(err);
+    if (err.name === 'ValidationError') err = handleValidationErrorDB(err);
     // JasonWebToken Error
-    if (err.name === 'JsonWebTokenError') error = handleJWTError(err);
+    if (err.name === 'JsonWebTokenError') err = handleJWTError(err);
     // JWT Expired Error
-    if (err.name === 'TokenExpiredError') error = handleJWTExpiredError(err);
+    if (err.name === 'TokenExpiredError') err = handleJWTExpiredError(err);
 
-    return sendErrorProd(error, res);
+    return sendErrorProd(err, res);
   }
 };

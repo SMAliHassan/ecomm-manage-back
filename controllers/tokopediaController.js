@@ -13,15 +13,17 @@ const client = new TokopediaClient({
   client_secret: process.env.TOKOPEDIA_CLIENT_SECRET,
 });
 
-client.client = axios.create({
-  baseURL:
-    process.env.NODE_ENV === 'development'
-      ? 'https://fs-staging.tokopedia.com'
-      : 'https://fs.tokopedia.net',
-  timeout: 5000,
-  httpAgent: httpAgent,
-  httpsAgent: httpsAgent,
-});
+if (process.env.NODE_ENV === 'production') {
+  client.client = axios.create({
+    baseURL:
+      process.env.NODE_ENV === 'production'
+        ? 'https://fs.tokopedia.net'
+        : 'https://fs-staging.tokopedia.com',
+    timeout: 5000,
+    httpAgent: httpAgent,
+    httpsAgent: httpsAgent,
+  });
+}
 
 const generateAccessToken = async () => {
   try {
@@ -39,8 +41,6 @@ const generateAccessToken = async () => {
     console.log('\nCould not authenticate Tokopedia client!\n', err.message);
   }
 };
-
-// console.log(client.client);
 
 // Initialize access_token
 (async () => await generateAccessToken())();
@@ -95,10 +95,6 @@ const loopRequest = async (module, func, baseOptions, initialPage = 0) => {
 const pullProducts = async store => {
   const productsArr = await loopRequest('product', 'getProductByShop', { shop_id: store.shopId });
 
-  // const popo = await client.product.getProductById(productsArr[0].variant.childrenID[0]);
-  // const popo = await client.product.getProductInfo([3062014918]);
-  // console.log(popo[0].variant);
-
   const productsModeled = productsArr.map(prod => {
     const images = prod.pictures.map(pic => pic.OriginalURL);
 
@@ -115,6 +111,7 @@ const pullProducts = async store => {
       images,
       price,
       url: prod.other.url,
+      channelSku: prod.other.sku,
       productId: prod.basic.productID,
       condition: prod.basic.condition,
       description: prod.basic.shortDesc,
@@ -165,19 +162,105 @@ exports.pullData = async storeId => {
 exports.updatePrice = async ({ productId, price }) => {
   const product = await Product.findById(productId).populate({ path: 'store', select: 'shopId' });
 
+  // try {
+  await client.product.updateProductPrice({
+    shop_id: product.store.shopId,
+    update_details: [{ product_id: product.productId, new_price: price }],
+  });
+  // } catch (err) {
+  //   if (err.message.trim().startsWith('RBAC_MDLW_002')) {
+  //     throw new AppError(
+  //       400,
+  //       "You do not have the required privilege to perform this action on this shop's items."
+  //     );
+  //   }
+
+  //   throw err;
+  // }
+};
+
+exports.getCategories = async () => {
+  const { data } = await axios.get(
+    `https://fs.tokopedia.net/inventory/v1/fs/${process.env.TOKOPEDIA_APP_ID}/product/category`,
+    {
+      headers: {
+        Authorization: `${client.token.token_type} ${client.token.access_token}`,
+      },
+    }
+  );
+
+  return data.data.categories;
+};
+
+exports.getAllShowcase = async shopId => {
+  const data = await client.product.getEtalase(shopId);
+
+  return data.etalase;
+};
+
+// exports.createProduct = async (shopId, productData) => {
+// const data = await client.product.createProduct({ shop_id: shopId, products: [productData] });
+// console.log(data);
+// const datao = await client.product.checkStatus(shopId, data.upload_id);
+// console.log(datao.failed_rows_data);
+// const store = await Store.findOne({ shopId, storeType: 'tokopedia' });
+// await pullProducts(store);
+// const datao = await client.product.getProductByShop({
+//   shop_id: store.shopId,
+//   page: 1,
+//   per_page: 1,
+//   sort: 2,
+// });
+// console.log(datao.data);
+// return await Product.findOne({
+// productId: data.success_rows_data[0].product_id,
+// createdAt:
+// storeType: 'tokopedia',
+// });
+// };
+
+exports.createProductV3 = async (storeId, productData) => {
   try {
-    await client.product.updateProductPrice({
-      shop_id: product.store.shopId,
-      update_details: [{ product_id: product.productId, new_price: price }],
+    const store = await Store.findById(storeId);
+
+    const { data } = await axios.post(
+      `https://fs.tokopedia.net/v3/products/fs/${process.env.TOKOPEDIA_APP_ID}/create?shop_id=${store.shopId}`,
+      { products: [productData] },
+      {
+        headers: {
+          Authorization: `${client.token.token_type} ${client.token.access_token}`,
+        },
+      }
+    );
+
+    if (data.data.fail_data) throw new AppError(400, 'Could not create product!');
+
+    const [prod] = await client.product.getProductInfo([data.data.success_rows_data[0].product_id]);
+
+    return await Product.create({
+      user: store.user,
+      store: store.id,
+      storeType: 'tokopedia',
+      productData: prod,
+      name: prod.basic.name,
+      images,
+      price,
+      url: prod.other.url,
+      channelSku: prod.other.sku,
+      productId: prod.basic.productID,
+      condition: prod.basic.condition,
+      description: prod.basic.shortDesc,
+      volume: prod.volume,
+      weight,
     });
   } catch (err) {
-    if (err.message.trim().startsWith('RBAC_MDLW_002')) {
+    if (err.response.status === 403) {
       throw new AppError(
-        400,
-        "You do not have the required privilege to perform this action on this shop's items."
+        403,
+        'The shop owner has not provided you the required privilege to perform this action on this shop or its items.'
       );
     }
 
-    throw err;
+    throw new AppError(400, 'Error, could not create product.');
   }
 };

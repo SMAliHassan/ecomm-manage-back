@@ -5,10 +5,12 @@ const tokopediaController = require('./tokopediaController');
 const masterProductController = require('./masterProductController');
 
 exports.getAllProducts = catchAsync(async (req, res, next) => {
-  const products = await Product.find({ user: req.user.id }).populate({
-    path: 'store',
-    select: 'storeName storeType',
-  });
+  const products = await Product.find({ user: req.user.id })
+    .populate({
+      path: 'store',
+      select: 'storeName storeType',
+    })
+    .select('-productData');
   //.populate({ path: 'store', select: 'storeName' });
 
   res.status(200).json({ status: 'success', data: { products } });
@@ -20,7 +22,8 @@ exports.getProductsByChannel = catchAsync(async (req, res, next) => {
     storeType: req.params.channel,
   })
     .populate({ path: 'store', select: 'storeName storeType' })
-    .populate({ path: 'masterProduct', select: 'bindedProduct name' });
+    .populate({ path: 'masterProduct', select: 'bindedProduct name' })
+    .select('-productData');
 
   res.status(200).json({ status: 'success', data: { products } });
 });

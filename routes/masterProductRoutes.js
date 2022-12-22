@@ -18,6 +18,8 @@ router
   .patch(masterProductController.updateProduct)
   .delete(masterProductController.deleteProduct);
 
+router.post('/:id/publish', masterProductController.publishToStore);
+
 router
   .route('/')
   .get(masterProductController.getAllProducts)

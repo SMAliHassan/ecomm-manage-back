@@ -16,9 +16,10 @@ router.get(
   authController.restrictTo('admin'),
   storeController.getAllStores
 );
-// .post( storeController.createStore);
 
 // router.get('/connected-store-types', storeController.getConnectedStoreTypes);
+
+router.get('/categories/:type', storeController.getCategories);
 
 router.post(
   '/:type',
@@ -27,10 +28,12 @@ router.post(
   storeController.createStore
 );
 
-router.patch('/:id', storeController.updateStore);
+router.route('/:id').get(storeController.getStore).patch(storeController.updateStore);
 
 router.route('/auth/:type').get(storeController.getAuthUrl).post(storeController.authorizeStore);
 
 router.route('/:id/pull-data').post(storeController.pullData);
+
+router.get('/:id/showcase', storeController.getAllShowcase);
 
 module.exports = router;

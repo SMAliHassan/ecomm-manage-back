@@ -30,6 +30,20 @@ const masterProductSchema = new Schema({
   updatedAt: Date,
 });
 
+masterProductSchema.pre('save', function (next) {
+  if (this.isNew) return next();
+
+  this.updatedAt = Date.now();
+
+  next();
+});
+
+masterProductSchema.pre('findOneAndUpdate', function (next) {
+  this.findOneAndUpdate({}, { updatedAt: Date.now() });
+
+  next();
+});
+
 const MasterProduct = model('MasterProduct', masterProductSchema);
 
 module.exports = MasterProduct;

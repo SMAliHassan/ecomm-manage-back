@@ -22,21 +22,27 @@ const sendErrorProd = (err, res) => {
 };
 
 const handleCastErrorDB = err => {
-  return new AppError(`Invalid ${err.path}: ${err.value}`, 400);
+  return new AppError(400, `Invalid ${err.path}: ${err.value}`);
 };
 
 const handleDuplicateFieldDB = err => {
   const value = err.message.match(/(["'])(?:(?=(\\?))\2.)*?\1/)[0];
 
-  return new AppError(`Duplicate Field value: ${value}. Please use another value!`, 400);
+  return new AppError(400, `Duplicate Field value: ${value}. Please use another value!`);
 };
 
-const handleValidationErrorDB = err => new AppError(err.message, 400);
+const handleValidationErrorDB = err => new AppError(400, err.message);
 
-const handleJWTError = () => new AppError('Invalid token! Please log in again.', 401);
+const handleJWTError = () => new AppError(401, 'Invalid token! Please log in again.');
 
 const handleJWTExpiredError = () =>
-  new AppError('Your token has expired! Please log in again.', 401);
+  new AppError(401, 'Your token has expired! Please log in again.');
+
+const handleTokopediaPrivilegeError = () =>
+  new AppError(
+    403,
+    'The shop owner has not provided you the required privilege to perform this action on this shop or its items.'
+  );
 
 module.exports = (err, req, res, next) => {
   err.status = err.status || 'error';
@@ -57,6 +63,8 @@ module.exports = (err, req, res, next) => {
     if (err.name === 'JsonWebTokenError') err = handleJWTError(err);
     // JWT Expired Error
     if (err.name === 'TokenExpiredError') err = handleJWTExpiredError(err);
+    // Tokopedia Dont have required privilige Error
+    if (err.message.trim().startsWith('RBAC_MDLW_002')) err = handleTokopediaPrivilegeError(err);
 
     return sendErrorProd(err, res);
   }

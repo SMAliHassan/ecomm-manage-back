@@ -36,6 +36,7 @@ const productSchema = new Schema(
     condition: Number, // NEW = 1 and USED = 2
     url: String,
     price: Number,
+    channelSku: String,
 
     volume: volumeSchema,
     weight: Number, // In Grams
@@ -54,6 +55,20 @@ const productSchema = new Schema(
 // productSchema.pre(/^find/, function () {
 //   this.populate({ path: 'store', select: 'storeName storeType' });
 // });
+
+productSchema.pre('save', function (next) {
+  if (this.isNew) return next();
+
+  this.updatedAt = Date.now();
+
+  next();
+});
+
+productSchema.pre('findOneAndUpdate', function (next) {
+  this.findOneAndUpdate({}, { updatedAt: Date.now() });
+
+  next();
+});
 
 productSchema.virtual('masterProduct', {
   ref: 'MasterProduct',

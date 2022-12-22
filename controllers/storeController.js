@@ -16,6 +16,16 @@ exports.getAllStores = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: { stores } });
 });
 
+exports.getStore = catchAsync(async (req, res, next) => {
+  const store = await Store.findById(req.params.id);
+  if (!store) return next(new AppError(400, 'No store exists with this id.'));
+
+  if (store.user !== req.user.id && req.user.role !== 'admin')
+    return next(new AppError(400, 'You do not have the permission to access this store.'));
+
+  res.status(200).json({ status: 'success', data: { store } });
+});
+
 exports.createStore = catchAsync(async (req, res, next) => {
   const { userEmail, shopId } = req.body;
 
@@ -93,4 +103,37 @@ exports.updateStore = catchAsync(async (req, res, next) => {
   await store.save();
 
   res.status(200).json({ status: 'success' });
+});
+
+exports.getCategories = catchAsync(async (req, res, next) => {
+  const { type } = req.params;
+
+  let categories;
+  switch (type) {
+    case 'tokopedia':
+      categories = await tokopediaController.getCategories();
+      break;
+
+    default:
+      break;
+  }
+
+  res.status(200).json({ status: 'success', data: { categories } });
+});
+
+exports.getAllShowcase = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { storeType, shopId } = await Store.findById(id);
+
+  let showcase;
+  switch (storeType) {
+    case 'tokopedia':
+      showcase = await tokopediaController.getAllShowcase(shopId);
+      break;
+
+    default:
+      break;
+  }
+
+  res.status(200).json({ status: 'success', data: { showcase } });
 });

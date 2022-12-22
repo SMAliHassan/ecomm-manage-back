@@ -169,13 +169,22 @@ exports.updatePrice = async ({ productId, price }) => {
 };
 
 exports.getCategories = async () => {
-  const { data } = await axios.get(
+  let axiosClient;
+  if (process.env.NODE_ENV === 'production') {
+    axiosClient = axios.create({
+      timeout: 15000,
+      httpAgent: httpAgent,
+      httpsAgent: httpsAgent,
+    });
+  } else {
+    axiosClient = axios.create({ timeout: 15000 });
+  }
+
+  const { data } = await axiosClient.get(
     `https://fs.tokopedia.net/inventory/v1/fs/${process.env.TOKOPEDIA_APP_ID}/product/category`,
     {
       headers: {
         Authorization: `${client.token.token_type} ${client.token.access_token}`,
-        httpAgent,
-        httpsAgent,
       },
     }
   );
@@ -214,14 +223,23 @@ exports.createProductV3 = async (storeId, productData) => {
   try {
     const store = await Store.findById(storeId);
 
-    const { data } = await axios.post(
+    let axiosClient;
+    if (process.env.NODE_ENV === 'production') {
+      axiosClient = axios.create({
+        timeout: 15000,
+        httpAgent: httpAgent,
+        httpsAgent: httpsAgent,
+      });
+    } else {
+      axiosClient = axios.create({ timeout: 15000 });
+    }
+
+    const { data } = await axiosClient.post(
       `https://fs.tokopedia.net/v3/products/fs/${process.env.TOKOPEDIA_APP_ID}/create?shop_id=${store.shopId}`,
       { products: [productData] },
       {
         headers: {
           Authorization: `${client.token.token_type} ${client.token.access_token}`,
-          httpAgent,
-          httpsAgent,
         },
       }
     );

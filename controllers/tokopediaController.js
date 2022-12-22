@@ -162,21 +162,10 @@ exports.pullData = async storeId => {
 exports.updatePrice = async ({ productId, price }) => {
   const product = await Product.findById(productId).populate({ path: 'store', select: 'shopId' });
 
-  // try {
   await client.product.updateProductPrice({
     shop_id: product.store.shopId,
     update_details: [{ product_id: product.productId, new_price: price }],
   });
-  // } catch (err) {
-  //   if (err.message.trim().startsWith('RBAC_MDLW_002')) {
-  //     throw new AppError(
-  //       400,
-  //       "You do not have the required privilege to perform this action on this shop's items."
-  //     );
-  //   }
-
-  //   throw err;
-  // }
 };
 
 exports.getCategories = async () => {
@@ -185,6 +174,8 @@ exports.getCategories = async () => {
     {
       headers: {
         Authorization: `${client.token.token_type} ${client.token.access_token}`,
+        httpAgent,
+        httpsAgent,
       },
     }
   );
@@ -229,6 +220,8 @@ exports.createProductV3 = async (storeId, productData) => {
       {
         headers: {
           Authorization: `${client.token.token_type} ${client.token.access_token}`,
+          httpAgent,
+          httpsAgent,
         },
       }
     );
